@@ -1,0 +1,10 @@
+
+> habit-tracker-frontend@1.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 234 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+8:44:03 PM [vite] Pre-transform error: Failed to resolve import "./views/Home.vue" from "src/router/index.js". Does the file exist?
