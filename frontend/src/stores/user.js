@@ -1,34 +1,50 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+// 本地存储版本 - 无需后端
+const STORAGE_KEY = 'habit-tracker-data'
+
+const loadFromStorage = () => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY)
+    return data ? JSON.parse(data) : { users: [], habits: [], checkins: [] }
+  } catch {
+    return { users: [], habits: [], checkins: [] }
+  }
+}
+
+const saveToStorage = (data) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
 
 export const useUserStore = defineStore('user', () => {
-  const users = ref([])
+  const data = loadFromStorage()
+  const users = ref(data.users || [])
   const currentUser = ref(null)
   const loading = ref(false)
 
   const loadUsers = async () => {
     loading.value = true
-    try {
-      const res = await axios.get(`${API_URL}/api/users`)
-      users.value = res.data
-      if (res.data.length > 0 && !currentUser.value) {
-        currentUser.value = res.data[0]
-      }
-    } catch (err) {
-      console.error('Failed to load users:', err)
-    } finally {
-      loading.value = false
+    users.value = loadFromStorage().users || []
+    if (users.value.length > 0 && !currentUser.value) {
+      currentUser.value = users.value[0]
     }
+    loading.value = false
   }
 
   const createUser = async (name) => {
-    const res = await axios.post(`${API_URL}/api/users`, { name })
-    users.value.unshift(res.data)
-    currentUser.value = res.data
-    return res.data
+    const newUser = {
+      id: Date.now().toString(),
+      name,
+      avatar: null,
+      created_at: new Date().toISOString()
+    }
+    const storageData = loadFromStorage()
+    storageData.users.unshift(newUser)
+    saveToStorage(storageData)
+    users.value.unshift(newUser)
+    currentUser.value = newUser
+    return newUser
   }
 
   const setCurrentUser = (user) => {
