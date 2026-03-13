@@ -85,6 +85,47 @@
           {{ importMessage.text }}
         </div>
 
+        <!-- Gist Sync Section -->
+        <div class="gist-section">
+          <button class="btn btn-secondary gist-toggle" @click="showGistConfig = !showGistConfig">
+            {{ showGistConfig ? '收起' : '展开' }} GitHub Gist 同步
+          </button>
+          
+          <div v-if="showGistConfig" class="gist-config">
+            <div class="form-group">
+              <label>GitHub Token</label>
+              <input 
+                v-model="gistToken" 
+                type="password" 
+                placeholder="ghp_xxxxxxxxxxxx"
+                class="input"
+              />
+              <p class="data-hint">在 GitHub Settings → Developer settings → Personal access tokens 创建</p>
+            </div>
+            
+            <div class="form-group">
+              <label>Gist ID（可选）</label>
+              <input 
+                v-model="gistId" 
+                placeholder="留空自动创建"
+                class="input"
+              />
+            </div>
+            
+            <div class="gist-actions">
+              <button class="btn btn-primary" @click="saveGistConfig">保存配置</button>
+              <button class="btn btn-secondary" @click="createNewGist" :disabled="!gistToken">创建 Gist</button>
+              <button class="btn btn-secondary" @click="syncToGist" :disabled="!gistToken || !gistId">↑ 同步到 Gist</button>
+              <button class="btn btn-secondary" @click="syncFromGist" :disabled="!gistToken || !gistId">↓ 从 Gist 同步</button>
+            </div>
+            
+            <p v-if="gistStore.lastSync" class="data-hint">
+              上次同步: {{ new Date(gistStore.lastSync).toLocaleString() }}
+            </p>
+            <p v-if="gistStore.syncing" class="data-hint syncing">同步中...</p>
+          </div>
+        </div>
+
         <div class="modal-actions">
           <button class="btn btn-secondary" @click="showDataModal = false">关闭</button>
         </div>
@@ -96,8 +137,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from './stores/user'
+import { useGistStore } from './stores/gist'
 
 const userStore = useUserStore()
+const gistStore = useGistStore()
 const users = computed(() => userStore.users)
 const currentUser = computed(() => userStore.currentUser)
 
@@ -119,6 +162,9 @@ const createUser = async () => {
 const showDataModal = ref(false)
 const importMessage = ref(null)
 const fileInput = ref(null)
+const gistToken = ref(gistStore.config.token)
+const gistId = ref(gistStore.config.gistId)
+const showGistConfig = ref(false)
 
 const exportData = () => {
   const data = localStorage.getItem('habit-tracker-data')
@@ -170,6 +216,44 @@ const importData = (event) => {
   }
   reader.readAsText(file)
   event.target.value = ''
+}
+
+// Gist sync functions
+const saveGistConfig = () => {
+  gistStore.setConfig(gistToken.value, gistId.value)
+  importMessage.value = { type: 'success', text: '配置已保存' }
+  setTimeout(() => { importMessage.value = null }, 3000)
+}
+
+const createNewGist = async () => {
+  try {
+    const id = await gistStore.createGist()
+    gistId.value = id
+    importMessage.value = { type: 'success', text: 'Gist 创建成功！ID: ' + id }
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '创建失败：' + err.message }
+  }
+}
+
+const syncToGist = async () => {
+  try {
+    await gistStore.syncToGist()
+    importMessage.value = { type: 'success', text: '同步到 Gist 成功！' }
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '同步失败：' + err.message }
+  }
+}
+
+const syncFromGist = async () => {
+  try {
+    await gistStore.syncFromGist()
+    importMessage.value = { type: 'success', text: '从 Gist 同步成功！页面即将刷新...' }
+    setTimeout(() => {
+      window.location.reload()
+    }, 1500)
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '同步失败：' + err.message }
+  }
 }
 
 onMounted(() => {
@@ -346,6 +430,40 @@ body {
   color: white;
 }
 
+/* Gist Section */
+.gist-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.gist-toggle {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.gist-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gist-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.syncing {
+  color: var(--primary);
+  font-weight: 500;
+}
+
 .main {
   max-width: 1200px;
   margin: 0 auto;
@@ -518,6 +636,14 @@ body {
   .modal {
     margin: 16px;
     padding: 20px;
+  }
+  
+  .gist-actions {
+    flex-direction: column;
+  }
+  
+  .gist-actions .btn {
+    width: 100%;
   }
 }
 </style>
