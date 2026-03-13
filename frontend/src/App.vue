@@ -11,10 +11,10 @@
           </div>
           <span class="logo-text">打卡</span>
         </router-link>
-        
+
         <div class="user-switcher">
-          <button 
-            v-for="user in users" 
+          <button
+            v-for="user in users"
             :key="user.id"
             class="user-btn"
             :class="{ active: currentUser?.id === user.id }"
@@ -24,6 +24,9 @@
           </button>
           <button class="user-btn add" @click="showAddUser = true">
             +
+          </button>
+          <button class="user-btn data-btn" @click="showDataModal = true" title="数据管理">
+            ⋮
           </button>
         </div>
       </div>
@@ -37,9 +40,9 @@
     <div v-if="showAddUser" class="modal-overlay" @click.self="showAddUser = false">
       <div class="modal">
         <h3>新建用户</h3>
-        <input 
-          v-model="newUserName" 
-          placeholder="输入用户名" 
+        <input
+          v-model="newUserName"
+          placeholder="输入用户名"
           class="input"
           @keyup.enter="createUser"
         />
@@ -48,6 +51,40 @@
           <button class="btn btn-primary" @click="createUser" :disabled="!newUserName.trim()">
             创建
           </button>
+        </div>
+      </div>
+    <!-- Data Management Modal -->
+    <div v-if="showDataModal" class="modal-overlay" @click.self="showDataModal = false">
+      <div class="modal">
+        <h3>数据管理</h3>
+        <div class="data-actions">
+          <div class="data-action">
+            <button class="btn btn-primary" @click="exportData">
+              📥 导出数据
+            </button>
+            <p class="data-hint">下载所有数据为 JSON 文件</p>
+          </div>
+
+          <div class="data-action">
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".json"
+              style="display: none"
+              @change="importData"
+            />
+            <button class="btn btn-secondary" @click="$refs.fileInput.click()">
+              📤 导入数据
+            </button>
+            <p class="data-hint">从 JSON 文件恢复数据（会覆盖现有数据）</p>
+          </div>
+        </div>
+        <div v-if="importMessage" :class="['import-message', importMessage.type]">
+          {{ importMessage.text }}
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="showDataModal = false">关闭</button>
         </div>
       </div>
     </div>
@@ -74,6 +111,63 @@ const createUser = async () => {
   await userStore.createUser(newUserName.value.trim())
   newUserName.value = ''
   showAddUser.value = false
+}
+
+// Data management
+const showDataModal = ref(false)
+const importMessage = ref(null)
+const fileInput = ref(null)
+
+const exportData = () => {
+  const data = localStorage.getItem('habit-tracker-data')
+  if (!data) {
+    importMessage.value = { type: 'error', text: '没有数据可导出' }
+    return
+  }
+
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `habit-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+  importMessage.value = { type: 'success', text: '数据已导出！' }
+  setTimeout(() => { importMessage.value = null }, 3000)
+}
+
+const importData = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result)
+
+      // Validate data structure
+      if (!data.users || !Array.isArray(data.users)) {
+        throw new Error('数据格式错误')
+      }
+
+      // Save to localStorage
+      localStorage.setItem('habit-tracker-data', JSON.stringify(data))
+
+      // Reload page to apply data
+      importMessage.value = { type: 'success', text: '数据导入成功！页面即将刷新...' }
+
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (err) {
+      importMessage.value = { type: 'error', text: '导入失败：' + err.message }
+    }
+  }
+  reader.readAsText(file)
+  event.target.value = ''
 }
 
 onMounted(() => {
@@ -202,6 +296,54 @@ body {
   background: var(--primary-hover);
 }
 
+.user-btn.data-btn {
+  width: 32px;
+  padding: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.user-btn.data-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.data-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.import-message {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.import-message.success {
+  background: #34C759;
+  color: white;
+}
+
+.import-message.error {
+  background: #FF3B30;
+  color: white;
+}
+
 .main {
   max-width: 1200px;
   margin: 0 auto;
@@ -299,26 +441,34 @@ body {
   .btn-primary:hover:not(:disabled) {
     background: var(--primary);
   }
-  
+
   .btn-primary:active:not(:disabled) {
     background: var(--primary-hover);
     transform: scale(0.98);
   }
-  
+
   .user-btn:hover {
     background: var(--bg);
   }
-  
+
   .user-btn:active {
     background: #E5E5EA;
   }
-  
+
   .user-btn.add:hover {
     background: var(--primary);
   }
-  
+
   .user-btn.add:active {
     background: var(--primary-hover);
+  }
+
+  .user-btn.data-btn:hover {
+    background: var(--bg);
+  }
+
+  .user-btn.data-btn:active {
+    background: #E5E5EA;
   }
 }
 
@@ -327,37 +477,42 @@ body {
     padding: 10px 12px;
     flex-wrap: nowrap;
   }
-  
+
   .logo-text {
     font-size: 16px;
   }
-  
+
   .logo-icon {
     width: 28px;
     height: 28px;
   }
-  
+
   .user-switcher {
     gap: 6px;
     flex-shrink: 0;
   }
-  
+
   .user-btn {
     padding: 6px 10px;
     font-size: 13px;
     white-space: nowrap;
   }
-  
+
   .user-btn.add {
     width: 32px;
     height: 32px;
     font-size: 18px;
   }
-  
+
+  .user-btn.data-btn {
+    width: 28px;
+    font-size: 14px;
+  }
+
   .main {
     padding: 16px 12px;
   }
-  
+
   .modal {
     margin: 16px;
     padding: 20px;
