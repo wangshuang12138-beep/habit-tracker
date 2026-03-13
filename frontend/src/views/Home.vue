@@ -472,8 +472,55 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
+  .empty-state {
+    padding: 60px 20px;
+  }
+  
+  .empty-icon {
+    font-size: 48px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
   .habits-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .habit-card {
+    padding: 16px;
+  }
+  
+  .habit-header {
+    margin-bottom: 12px;
+  }
+  
+  .habit-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .habit-info h3 {
+    font-size: 15px;
+  }
+  
+  .habit-calendar {
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  
+  .day-dot {
+    height: 6px;
+  }
+  
+  .modal {
+    padding: 20px;
+    margin: 16px;
   }
 }
 </style>
