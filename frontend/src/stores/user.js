@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useGistStore } from './gist'
 
 // 本地存储版本 - 无需后端
 const STORAGE_KEY = 'habit-tracker-data'
@@ -44,6 +45,15 @@ export const useUserStore = defineStore('user', () => {
     saveToStorage(storageData)
     users.value.unshift(newUser)
     currentUser.value = newUser
+    
+    // Trigger gist sync
+    try {
+      const gistStore = useGistStore()
+      gistStore.scheduleSync()
+    } catch (e) {
+      // Gist store might not be initialized yet
+    }
+    
     return newUser
   }
 
