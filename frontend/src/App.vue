@@ -12,7 +12,7 @@
           <span class="logo-text">打卡</span>
         </router-link>
         
-        <div class="user-switcher" v-if="users.length > 0">
+        <div class="user-switcher">
           <button 
             v-for="user in users" 
             :key="user.id"
