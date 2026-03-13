@@ -192,7 +192,14 @@ body {
 .user-btn.add {
   width: 36px;
   padding: 0;
-  font-size: 18px;
+  font-size: 20px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.user-btn.add:hover {
+  background: var(--primary-hover);
 }
 
 .main {
