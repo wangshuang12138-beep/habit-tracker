@@ -294,20 +294,73 @@ body {
   background: #E5E5EA;
 }
 
+/* Touch optimization for mobile */
+@media (hover: none) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--primary);
+  }
+  
+  .btn-primary:active:not(:disabled) {
+    background: var(--primary-hover);
+    transform: scale(0.98);
+  }
+  
+  .user-btn:hover {
+    background: var(--bg);
+  }
+  
+  .user-btn:active {
+    background: #E5E5EA;
+  }
+  
+  .user-btn.add:hover {
+    background: var(--primary);
+  }
+  
+  .user-btn.add:active {
+    background: var(--primary-hover);
+  }
+}
+
 @media (max-width: 640px) {
   .header-content {
-    padding: 12px 16px;
-    flex-wrap: wrap;
+    padding: 10px 12px;
+    flex-wrap: nowrap;
+  }
+  
+  .logo-text {
+    font-size: 16px;
+  }
+  
+  .logo-icon {
+    width: 28px;
+    height: 28px;
   }
   
   .user-switcher {
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  
+  .user-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  
+  .user-btn.add {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
   }
   
   .main {
-    padding: 20px 16px;
+    padding: 16px 12px;
+  }
+  
+  .modal {
+    margin: 16px;
+    padding: 20px;
   }
 }
 </style>
