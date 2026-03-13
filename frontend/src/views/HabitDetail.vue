@@ -749,11 +749,56 @@ watch(() => route.params.id, (newId) => {
   .habit-hero {
     flex-direction: column;
     text-align: center;
-    padding: 24px;
+    padding: 20px;
+    gap: 16px;
+  }
+  
+  .habit-icon-large {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+  }
+  
+  .habit-meta h1 {
+    font-size: 20px;
   }
   
   .habit-badges {
     justify-content: center;
+  }
+  
+  .calendar-section {
+    padding: 16px;
+  }
+  
+  .calendar-grid {
+    gap: 4px;
+  }
+  
+  .calendar-day {
+    font-size: 12px;
+  }
+  
+  .day-number {
+    font-size: 12px;
+  }
+  
+  .checkins-section {
+    padding: 16px;
+  }
+  
+  .checkin-item {
+    padding: 12px;
+  }
+  
+  .detail-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>
