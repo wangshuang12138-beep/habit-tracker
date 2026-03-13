@@ -53,6 +53,8 @@
           </button>
         </div>
       </div>
+    </div>
+
     <!-- Data Management Modal -->
     <div v-if="showDataModal" class="modal-overlay" @click.self="showDataModal = false">
       <div class="modal">
