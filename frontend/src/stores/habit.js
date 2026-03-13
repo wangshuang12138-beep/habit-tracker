@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useGistStore } from './gist'
 
 const STORAGE_KEY = 'habit-tracker-data'
 
@@ -14,6 +15,15 @@ const loadFromStorage = () => {
 
 const saveToStorage = (data) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+const scheduleGistSync = () => {
+  try {
+    const gistStore = useGistStore()
+    gistStore.scheduleSync()
+  } catch (e) {
+    // Gist store might not be initialized yet
+  }
 }
 
 export const useHabitStore = defineStore('habit', () => {
@@ -47,6 +57,7 @@ export const useHabitStore = defineStore('habit', () => {
     data.habits.unshift(newHabit)
     saveToStorage(data)
     habits.value.unshift(newHabit)
+    scheduleGistSync()
     return newHabit
   }
 
@@ -59,6 +70,7 @@ export const useHabitStore = defineStore('habit', () => {
       const localIdx = habits.value.findIndex(h => h.id === habitId)
       if (localIdx >= 0) habits.value[localIdx] = { ...habits.value[localIdx], ...habitData }
     }
+    scheduleGistSync()
   }
 
   const deleteHabit = async (habitId) => {
@@ -68,6 +80,7 @@ export const useHabitStore = defineStore('habit', () => {
     saveToStorage(data)
     habits.value = habits.value.filter(h => h.id !== habitId)
     checkins.value = checkins.value.filter(c => c.habit_id !== habitId)
+    scheduleGistSync()
   }
 
   const loadCheckins = async (habitId, start, end) => {
@@ -112,6 +125,7 @@ export const useHabitStore = defineStore('habit', () => {
     } else {
       checkins.value.unshift(checkinData)
     }
+    scheduleGistSync()
     return checkinData
   }
 
@@ -120,6 +134,7 @@ export const useHabitStore = defineStore('habit', () => {
     data.checkins = data.checkins.filter(c => c.id !== checkinId)
     saveToStorage(data)
     checkins.value = checkins.value.filter(c => c.id !== checkinId)
+    scheduleGistSync()
   }
 
   const loadStats = async (habitId) => {
