@@ -11,10 +11,10 @@
           </div>
           <span class="logo-text">打卡</span>
         </router-link>
-        
-        <div class="user-switcher" v-if="users.length > 0">
-          <button 
-            v-for="user in users" 
+
+        <div class="user-switcher">
+          <button
+            v-for="user in users"
             :key="user.id"
             class="user-btn"
             :class="{ active: currentUser?.id === user.id }"
@@ -24,6 +24,9 @@
           </button>
           <button class="user-btn add" @click="showAddUser = true">
             +
+          </button>
+          <button class="user-btn data-btn" @click="showDataModal = true" title="数据管理">
+            ⋮
           </button>
         </div>
       </div>
@@ -37,9 +40,9 @@
     <div v-if="showAddUser" class="modal-overlay" @click.self="showAddUser = false">
       <div class="modal">
         <h3>新建用户</h3>
-        <input 
-          v-model="newUserName" 
-          placeholder="输入用户名" 
+        <input
+          v-model="newUserName"
+          placeholder="输入用户名"
           class="input"
           @keyup.enter="createUser"
         />
@@ -51,14 +54,93 @@
         </div>
       </div>
     </div>
+
+    <!-- Data Management Modal -->
+    <div v-if="showDataModal" class="modal-overlay" @click.self="showDataModal = false">
+      <div class="modal">
+        <h3>数据管理</h3>
+        <div class="data-actions">
+          <div class="data-action">
+            <button class="btn btn-primary" @click="exportData">
+              📥 导出数据
+            </button>
+            <p class="data-hint">下载所有数据为 JSON 文件</p>
+          </div>
+
+          <div class="data-action">
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".json"
+              style="display: none"
+              @change="importData"
+            />
+            <button class="btn btn-secondary" @click="$refs.fileInput.click()">
+              📤 导入数据
+            </button>
+            <p class="data-hint">从 JSON 文件恢复数据（会覆盖现有数据）</p>
+          </div>
+        </div>
+        <div v-if="importMessage" :class="['import-message', importMessage.type]">
+          {{ importMessage.text }}
+        </div>
+
+        <!-- Gist Sync Section -->
+        <div class="gist-section">
+          <button class="btn btn-secondary gist-toggle" @click="showGistConfig = !showGistConfig">
+            {{ showGistConfig ? '收起' : '展开' }} GitHub Gist 同步
+          </button>
+          
+          <div v-if="showGistConfig" class="gist-config">
+            <div class="form-group">
+              <label>GitHub Token</label>
+              <input 
+                v-model="gistToken" 
+                type="password" 
+                placeholder="ghp_xxxxxxxxxxxx"
+                class="input"
+              />
+              <p class="data-hint">在 GitHub Settings → Developer settings → Personal access tokens 创建</p>
+            </div>
+            
+            <div class="form-group">
+              <label>Gist ID（可选）</label>
+              <input 
+                v-model="gistId" 
+                placeholder="留空自动创建"
+                class="input"
+              />
+            </div>
+            
+            <div class="gist-actions">
+              <button class="btn btn-primary" @click="saveGistConfig">保存配置</button>
+              <button class="btn btn-secondary" @click="createNewGist" :disabled="!gistToken">创建 Gist</button>
+              <button class="btn btn-secondary" @click="syncToGist" :disabled="!gistToken || !gistId">↑ 同步到 Gist</button>
+              <button class="btn btn-secondary" @click="syncFromGist" :disabled="!gistToken || !gistId">↓ 从 Gist 同步</button>
+            </div>
+            
+            <p v-if="gistStore.lastSync" class="data-hint">
+              上次同步: {{ new Date(gistStore.lastSync).toLocaleString() }}
+            </p>
+            <p v-if="gistStore.syncing" class="data-hint syncing">同步中...</p>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="showDataModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from './stores/user'
+import { useGistStore } from './stores/gist'
 
 const userStore = useUserStore()
+const gistStore = useGistStore()
 const users = computed(() => userStore.users)
 const currentUser = computed(() => userStore.currentUser)
 
@@ -74,6 +156,104 @@ const createUser = async () => {
   await userStore.createUser(newUserName.value.trim())
   newUserName.value = ''
   showAddUser.value = false
+}
+
+// Data management
+const showDataModal = ref(false)
+const importMessage = ref(null)
+const fileInput = ref(null)
+const gistToken = ref(gistStore.config.token)
+const gistId = ref(gistStore.config.gistId)
+const showGistConfig = ref(false)
+
+const exportData = () => {
+  const data = localStorage.getItem('habit-tracker-data')
+  if (!data) {
+    importMessage.value = { type: 'error', text: '没有数据可导出' }
+    return
+  }
+
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `habit-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+  importMessage.value = { type: 'success', text: '数据已导出！' }
+  setTimeout(() => { importMessage.value = null }, 3000)
+}
+
+const importData = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result)
+
+      // Validate data structure
+      if (!data.users || !Array.isArray(data.users)) {
+        throw new Error('数据格式错误')
+      }
+
+      // Save to localStorage
+      localStorage.setItem('habit-tracker-data', JSON.stringify(data))
+
+      // Reload page to apply data
+      importMessage.value = { type: 'success', text: '数据导入成功！页面即将刷新...' }
+
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (err) {
+      importMessage.value = { type: 'error', text: '导入失败：' + err.message }
+    }
+  }
+  reader.readAsText(file)
+  event.target.value = ''
+}
+
+// Gist sync functions
+const saveGistConfig = () => {
+  gistStore.setConfig(gistToken.value, gistId.value)
+  importMessage.value = { type: 'success', text: '配置已保存' }
+  setTimeout(() => { importMessage.value = null }, 3000)
+}
+
+const createNewGist = async () => {
+  try {
+    const id = await gistStore.createGist()
+    gistId.value = id
+    importMessage.value = { type: 'success', text: 'Gist 创建成功！ID: ' + id }
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '创建失败：' + err.message }
+  }
+}
+
+const syncToGist = async () => {
+  try {
+    await gistStore.syncToGist()
+    importMessage.value = { type: 'success', text: '同步到 Gist 成功！' }
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '同步失败：' + err.message }
+  }
+}
+
+const syncFromGist = async () => {
+  try {
+    await gistStore.syncFromGist()
+    importMessage.value = { type: 'success', text: '从 Gist 同步成功！页面即将刷新...' }
+    setTimeout(() => {
+      window.location.reload()
+    }, 1500)
+  } catch (err) {
+    importMessage.value = { type: 'error', text: '同步失败：' + err.message }
+  }
 }
 
 onMounted(() => {
@@ -192,7 +372,96 @@ body {
 .user-btn.add {
   width: 36px;
   padding: 0;
-  font-size: 18px;
+  font-size: 20px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.user-btn.add:hover {
+  background: var(--primary-hover);
+}
+
+.user-btn.data-btn {
+  width: 32px;
+  padding: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.user-btn.data-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.data-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.import-message {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.import-message.success {
+  background: #34C759;
+  color: white;
+}
+
+.import-message.error {
+  background: #FF3B30;
+  color: white;
+}
+
+/* Gist Section */
+.gist-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.gist-toggle {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.gist-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gist-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.syncing {
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .main {
@@ -287,20 +556,94 @@ body {
   background: #E5E5EA;
 }
 
+/* Touch optimization for mobile */
+@media (hover: none) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--primary);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background: var(--primary-hover);
+    transform: scale(0.98);
+  }
+
+  .user-btn:hover {
+    background: var(--bg);
+  }
+
+  .user-btn:active {
+    background: #E5E5EA;
+  }
+
+  .user-btn.add:hover {
+    background: var(--primary);
+  }
+
+  .user-btn.add:active {
+    background: var(--primary-hover);
+  }
+
+  .user-btn.data-btn:hover {
+    background: var(--bg);
+  }
+
+  .user-btn.data-btn:active {
+    background: #E5E5EA;
+  }
+}
+
 @media (max-width: 640px) {
   .header-content {
-    padding: 12px 16px;
-    flex-wrap: wrap;
+    padding: 10px 12px;
+    flex-wrap: nowrap;
   }
-  
+
+  .logo-text {
+    font-size: 16px;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+  }
+
   .user-switcher {
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .user-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .user-btn.add {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .user-btn.data-btn {
+    width: 28px;
+    font-size: 14px;
+  }
+
+  .main {
+    padding: 16px 12px;
+  }
+
+  .modal {
+    margin: 16px;
+    padding: 20px;
   }
   
-  .main {
-    padding: 20px 16px;
+  .gist-actions {
+    flex-direction: column;
+  }
+  
+  .gist-actions .btn {
+    width: 100%;
   }
 }
 </style>

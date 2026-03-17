@@ -774,13 +774,39 @@ watch(() => route.params.id, (newId) => {
     grid-template-columns: 1fr;
   }
   
-  .progress-ring {
-    width: 56px;
-    height: 56px;
+  .stats-page {
+    padding: 0 12px;
+  }
+  
+  .detail-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .period-selector {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stat-card {
+    padding: 16px;
   }
   
   .stat-value-large {
-    font-size: 36px;
+    font-size: 32px;
+  }
+  
+  .progress-ring {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .chart-card {
+    padding: 16px;
+  }
+  
+  .trend-chart {
+    height: 100px;
   }
   
   .heatmap {
@@ -789,6 +815,14 @@ watch(() => route.params.id, (newId) => {
   
   .heatmap-month {
     min-width: 100%;
+  }
+  
+  .month-days {
+    gap: 2px;
+  }
+  
+  .heatmap-day {
+    border-radius: 2px;
   }
 }
 </style>
